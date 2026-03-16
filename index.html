@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ChatGPT Voice Downloader — Save Read Aloud Audio Instantly</title>
-  <meta name="description" content="A Chrome extension that lets you download ChatGPT's Read Aloud audio as MP3 files. One click. Zero friction." />
+  <meta name="description" content="A Chrome extension that automatically downloads ChatGPT's Read Aloud audio. Just hit Read Aloud and get the file. Free, open source." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet" />
@@ -783,8 +783,9 @@
           <li><a href="#how-it-works">How It Works</a></li>
           <li><a href="#features">Features</a></li>
           <li><a href="#preview">Preview</a></li>
+          <li><a href="https://github.com/jaxjixmix/chatgpt-voice-downloader-extension" target="_blank" rel="noopener">GitHub</a></li>
         </ul>
-        <a href="#install" class="nav-cta">
+        <a href="/chatgpt-voice-downloader.zip" class="nav-cta" download>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <polyline points="8 12 12 16 16 12"/>
@@ -806,16 +807,16 @@
           Save ChatGPT's<br /><span class="accent">Voice</span> as Audio
         </h1>
         <p class="hero-sub">
-          One-click download when ChatGPT reads aloud. Capture any response as an MP3 file &mdash; instantly, privately, no account required.
+          One-click download when ChatGPT reads aloud. Capture any response as an audio file &mdash; instantly, privately, no account required.
         </p>
         <div class="hero-actions">
-          <a href="#install" class="btn-primary">
+          <a href="/chatgpt-voice-downloader.zip" class="btn-primary" download>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Add to Chrome
+            Download Extension
           </a>
           <a href="#how-it-works" class="btn-secondary">See how it works</a>
         </div>
@@ -847,7 +848,7 @@
               </svg>
             </div>
             <h3>Install the extension</h3>
-            <p>Add it from the Chrome Web Store in one click. No permissions abuse &mdash; it only runs on chatgpt.com.</p>
+            <p>Download the zip, unpack it, and load it as an unpacked extension in Chrome. It only runs on chatgpt.com.</p>
           </div>
 
           <div class="step fade-in">
@@ -859,8 +860,8 @@
                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
               </svg>
             </div>
-            <h3>Hit "Read Aloud"</h3>
-            <p>Use ChatGPT's built-in Read Aloud on any response. The extension detects it automatically.</p>
+            <h3>Click "Read Aloud"</h3>
+            <p>Use ChatGPT's built-in Read Aloud on any response. The extension detects it automatically in the background.</p>
           </div>
 
           <div class="step fade-in">
@@ -873,8 +874,8 @@
                 <line x1="9" y1="15" x2="15" y2="15"/>
               </svg>
             </div>
-            <h3>Download the audio</h3>
-            <p>A download button appears inline. Click it to save the audio as an MP3 file to your computer.</p>
+            <h3>Audio auto-downloads</h3>
+            <p>The audio file saves to your machine automatically. No extra clicks &mdash; just check your downloads folder.</p>
           </div>
         </div>
       </div>
@@ -898,9 +899,9 @@
                   <polyline points="12 6 12 12 16 14"/>
                 </svg>
               </div>
-              <h3>One-click download</h3>
+              <h3>Automatic capture</h3>
             </div>
-            <p>An inline button appears right next to ChatGPT's Read Aloud controls. No popups, no menus, no friction.</p>
+            <p>Just click Read Aloud like you normally would. The extension captures the audio and downloads it automatically. Zero extra steps.</p>
           </div>
 
           <div class="feature-card fade-in">
@@ -924,9 +925,9 @@
                   <polyline points="14 2 14 8 20 8"/>
                 </svg>
               </div>
-              <h3>MP3 format</h3>
+              <h3>AAC audio format</h3>
             </div>
-            <p>Audio is saved as high-quality MP3 files that work everywhere &mdash; share, archive, or use in your own projects.</p>
+            <p>Audio is saved as high-quality AAC files that work everywhere &mdash; play offline, use in content, or share with anyone.</p>
           </div>
 
           <div class="feature-card fade-in">
@@ -939,7 +940,7 @@
               </div>
               <h3>Open source</h3>
             </div>
-            <p>Fully open source on GitHub. Inspect the code, contribute, or fork it. Transparency by default.</p>
+            <p>Fully open source on <a href="https://github.com/jaxjixmix/chatgpt-voice-downloader-extension" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-dim);">GitHub</a>. Inspect the code, contribute, or fork it. Transparency by default.</p>
           </div>
         </div>
       </div>
@@ -951,9 +952,9 @@
         <div class="preview-container">
           <div class="preview-text">
             <div class="section-label">Preview</div>
-            <h2 class="section-title">Seamlessly<br />integrated</h2>
+            <h2 class="section-title">Invisible<br />by design</h2>
             <p class="section-desc">
-              The download button blends right into ChatGPT's interface. It's there when you need it, invisible when you don't.
+              No buttons added to ChatGPT's interface. Just use Read Aloud normally &mdash; the audio file appears in your downloads automatically.
             </p>
           </div>
           <div class="preview-mockup fade-in">
@@ -979,7 +980,7 @@
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                   </svg>
                 </button>
-                <button class="chat-action-btn" title="Read Aloud">
+                <button class="chat-action-btn" title="Read Aloud" style="border-color: var(--accent); color: var(--accent);">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
                     <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -990,15 +991,11 @@
                     <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
                   </svg>
                 </button>
-                <!-- THE EXTENSION'S DOWNLOAD BUTTON -->
-                <button class="chat-action-btn download-btn" title="Download Audio">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                </button>
-                <span class="download-label">NEW</span>
+              </div>
+              <!-- Toast notification mockup -->
+              <div style="margin-top: 0.8rem; display: flex; align-items: center; gap: 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 8px 12px; font-size: 0.72rem; color: #e8e8e8; font-family: var(--font-mono);">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0;"></span>
+                Saved 42KB: chatgpt-voice-2026-03-17.aac
               </div>
             </div>
           </div>
@@ -1014,13 +1011,13 @@
         <p class="section-desc">
           Free, open source, and takes five seconds to install.
         </p>
-        <a href="#" class="btn-primary">
+        <a href="/chatgpt-voice-downloader.zip" class="btn-primary" download>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          Add to Chrome &mdash; It's Free
+          Download Extension &mdash; It's Free
         </a>
       </div>
     </section>
@@ -1030,7 +1027,7 @@
       <div class="container">
         <div class="footer-left">&copy; 2026 ChatGPT Voice Downloader</div>
         <ul class="footer-links">
-          <li><a href="https://github.com" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://github.com/jaxjixmix/chatgpt-voice-downloader-extension" target="_blank" rel="noopener">GitHub</a></li>
           <li><a href="#">Privacy</a></li>
           <li><a href="#">Support</a></li>
         </ul>

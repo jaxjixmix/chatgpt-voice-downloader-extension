@@ -1,0 +1,14 @@
+{
+  "buildCommand": "bash build.sh",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/chatgpt-voice-downloader.zip",
+      "headers": [
+        { "key": "Content-Type", "value": "application/zip" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"chatgpt-voice-downloader.zip\"" }
+      ]
+    }
+  ]
+}
