@@ -2,167 +2,158 @@
  * inject.js — Runs in the PAGE context (not the content script's isolated world).
  * Intercepts fetch() calls to capture ChatGPT's TTS audio responses.
  *
- * ChatGPT's Read Aloud uses the OpenAI TTS API which returns audio data.
- * We intercept those responses, collect the audio bytes, and post them
- * back to the content script via window.postMessage.
+ * The Read Aloud request looks like:
+ *   GET /backend-api/synthesize?message_id=...&conversation_id=...&voice=cove&format=aac
+ *
+ * The response is audio data (AAC format). We intercept it, collect all chunks
+ * from the stream, and post back to the content script via window.postMessage.
  */
 
 (function () {
   'use strict';
 
+  // Grab original fetch BEFORE anything else can patch it
   const ORIGINAL_FETCH = window.fetch;
 
-  // Patterns that indicate a TTS / audio synthesis request
-  const TTS_URL_PATTERNS = [
-    '/backend-api/synthesize',
-    '/v1/audio/speech',
-    '/backend-api/conversation/tts',
-    '/synthesis',
-  ];
-
   function isTTSRequest(url) {
-    const urlStr = typeof url === 'string' ? url : url?.url || '';
-    return TTS_URL_PATTERNS.some((pattern) => urlStr.includes(pattern));
+    const urlStr = typeof url === 'string' ? url : (url instanceof Request ? url.url : String(url));
+    return urlStr.includes('/backend-api/synthesize');
   }
 
   window.fetch = async function (...args) {
     const [resource, init] = args;
-    const url = typeof resource === 'string' ? resource : resource?.url || '';
+    const url = typeof resource === 'string' ? resource : (resource instanceof Request ? resource.url : String(resource));
 
-    // Pass through non-TTS requests immediately
     if (!isTTSRequest(url)) {
       return ORIGINAL_FETCH.apply(this, args);
     }
 
-    console.log('[VoiceDL] TTS request detected:', url);
+    console.log('[VoiceDL] TTS request intercepted:', url);
+
+    // Notify content script that TTS started
+    window.postMessage({ type: 'CHATGPT_VOICE_DL_TTS_START', payload: { url, timestamp: Date.now() } }, '*');
 
     try {
       const response = await ORIGINAL_FETCH.apply(this, args);
 
-      // Clone the response so we can read the body without consuming it
+      // We need to read the body without consuming it for the caller.
+      // Clone the response — the original goes back to ChatGPT, we read the clone.
       const clone = response.clone();
 
-      // Read audio data in the background — don't block the original caller
-      (async () => {
-        try {
-          const contentType = clone.headers.get('content-type') || '';
-          const isAudio =
-            contentType.includes('audio') ||
-            contentType.includes('octet-stream') ||
-            contentType.includes('mpeg');
-
-          if (!isAudio && !contentType.includes('application/json')) {
-            // Might still be audio with wrong content-type, try anyway
-          }
-
-          // Try to read as arrayBuffer
-          const buffer = await clone.arrayBuffer();
-
-          if (buffer.byteLength < 100) {
-            console.log('[VoiceDL] Response too small, skipping:', buffer.byteLength);
-            return;
-          }
-
-          // Convert to base64 for transfer via postMessage
-          const uint8 = new Uint8Array(buffer);
-          let binary = '';
-          const chunkSize = 8192;
-          for (let i = 0; i < uint8.length; i += chunkSize) {
-            const slice = uint8.subarray(i, i + chunkSize);
-            binary += String.fromCharCode.apply(null, slice);
-          }
-          const base64 = btoa(binary);
-
-          // Determine file extension from content-type
-          let ext = 'mp3';
-          if (contentType.includes('wav')) ext = 'wav';
-          else if (contentType.includes('ogg')) ext = 'ogg';
-          else if (contentType.includes('aac')) ext = 'aac';
-          else if (contentType.includes('opus')) ext = 'opus';
-
-          console.log(
-            `[VoiceDL] Captured TTS audio: ${(buffer.byteLength / 1024).toFixed(1)}KB, type=${contentType}, ext=${ext}`
-          );
-
-          window.postMessage(
-            {
-              type: 'CHATGPT_VOICE_DL_AUDIO',
-              payload: {
-                audio: base64,
-                contentType: contentType || `audio/${ext}`,
-                ext,
-                size: buffer.byteLength,
-                url,
-                timestamp: Date.now(),
-              },
-            },
-            '*'
-          );
-        } catch (err) {
-          console.error('[VoiceDL] Error reading TTS response:', err);
-        }
-      })();
+      // Read the full body in the background (handles both streaming and non-streaming)
+      collectAudio(clone, url);
 
       return response;
     } catch (err) {
-      console.error('[VoiceDL] Fetch intercept error:', err);
+      console.error('[VoiceDL] Fetch error:', err);
       return ORIGINAL_FETCH.apply(this, args);
     }
   };
 
-  // Also intercept XMLHttpRequest as a fallback
-  const ORIGINAL_XHR_OPEN = XMLHttpRequest.prototype.open;
-  const ORIGINAL_XHR_SEND = XMLHttpRequest.prototype.send;
+  async function collectAudio(response, url) {
+    try {
+      const contentType = response.headers.get('content-type') || '';
 
-  XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-    this._voiceDLUrl = url;
-    this._voiceDLIsTTS = isTTSRequest(url);
-    return ORIGINAL_XHR_OPEN.apply(this, [method, url, ...rest]);
-  };
+      // Try reading the body via the ReadableStream to handle chunked/streaming responses
+      if (response.body && typeof response.body.getReader === 'function') {
+        const reader = response.body.getReader();
+        const chunks = [];
+        let totalSize = 0;
 
-  XMLHttpRequest.prototype.send = function (...args) {
-    if (this._voiceDLIsTTS) {
-      this.responseType = this.responseType || 'arraybuffer';
-      this.addEventListener('load', function () {
-        try {
-          if (this.response instanceof ArrayBuffer && this.response.byteLength > 100) {
-            const uint8 = new Uint8Array(this.response);
-            let binary = '';
-            const chunkSize = 8192;
-            for (let i = 0; i < uint8.length; i += chunkSize) {
-              const slice = uint8.subarray(i, i + chunkSize);
-              binary += String.fromCharCode.apply(null, slice);
-            }
-            const base64 = btoa(binary);
-            const contentType = this.getResponseHeader('content-type') || 'audio/mpeg';
-            let ext = 'mp3';
-            if (contentType.includes('wav')) ext = 'wav';
-            else if (contentType.includes('ogg')) ext = 'ogg';
-
-            console.log(`[VoiceDL] XHR captured TTS audio: ${(this.response.byteLength / 1024).toFixed(1)}KB`);
-
-            window.postMessage(
-              {
-                type: 'CHATGPT_VOICE_DL_AUDIO',
-                payload: {
-                  audio: base64,
-                  contentType,
-                  ext,
-                  size: this.response.byteLength,
-                  url: this._voiceDLUrl,
-                  timestamp: Date.now(),
-                },
-              },
-              '*'
-            );
-          }
-        } catch (err) {
-          console.error('[VoiceDL] XHR intercept error:', err);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          totalSize += value.byteLength;
         }
-      });
-    }
-    return ORIGINAL_XHR_SEND.apply(this, args);
-  };
 
-  console.log('[VoiceDL] Fetch interceptor installed');
+        if (totalSize < 100) {
+          console.log('[VoiceDL] Response too small, skipping:', totalSize, 'bytes');
+          return;
+        }
+
+        // Merge all chunks into a single Uint8Array
+        const merged = new Uint8Array(totalSize);
+        let offset = 0;
+        for (const chunk of chunks) {
+          merged.set(chunk, offset);
+          offset += chunk.byteLength;
+        }
+
+        // Convert to base64 for postMessage transfer
+        const base64 = uint8ToBase64(merged);
+
+        // Determine format from URL params or content-type
+        let ext = 'aac'; // default — ChatGPT uses AAC
+        const urlObj = new URL(url, location.origin);
+        const formatParam = urlObj.searchParams.get('format');
+        if (formatParam) {
+          ext = formatParam; // e.g. 'aac', 'mp3', 'opus'
+        } else if (contentType.includes('mpeg') || contentType.includes('mp3')) {
+          ext = 'mp3';
+        } else if (contentType.includes('wav')) {
+          ext = 'wav';
+        } else if (contentType.includes('ogg') || contentType.includes('opus')) {
+          ext = 'opus';
+        }
+
+        console.log(`[VoiceDL] Captured TTS audio: ${(totalSize / 1024).toFixed(1)}KB, format=${ext}, content-type=${contentType}`);
+
+        window.postMessage({
+          type: 'CHATGPT_VOICE_DL_AUDIO',
+          payload: {
+            audio: base64,
+            contentType: contentType || `audio/${ext}`,
+            ext,
+            size: totalSize,
+            url,
+            timestamp: Date.now(),
+          },
+        }, '*');
+
+      } else {
+        // Fallback: read as arrayBuffer (non-streaming)
+        const buffer = await response.arrayBuffer();
+
+        if (buffer.byteLength < 100) return;
+
+        const uint8 = new Uint8Array(buffer);
+        const base64 = uint8ToBase64(uint8);
+        let ext = 'aac';
+        try {
+          const urlObj = new URL(url, location.origin);
+          ext = urlObj.searchParams.get('format') || 'aac';
+        } catch (e) {}
+
+        console.log(`[VoiceDL] Captured TTS audio (fallback): ${(buffer.byteLength / 1024).toFixed(1)}KB`);
+
+        window.postMessage({
+          type: 'CHATGPT_VOICE_DL_AUDIO',
+          payload: {
+            audio: base64,
+            contentType: contentType || `audio/${ext}`,
+            ext,
+            size: buffer.byteLength,
+            url,
+            timestamp: Date.now(),
+          },
+        }, '*');
+      }
+    } catch (err) {
+      console.error('[VoiceDL] Error collecting audio:', err);
+    }
+  }
+
+  // Efficient base64 encoding for large Uint8Arrays
+  function uint8ToBase64(uint8) {
+    const chunkSize = 0x8000; // 32KB chunks to avoid call stack limits
+    let binary = '';
+    for (let i = 0; i < uint8.length; i += chunkSize) {
+      const slice = uint8.subarray(i, Math.min(i + chunkSize, uint8.length));
+      binary += String.fromCharCode.apply(null, slice);
+    }
+    return btoa(binary);
+  }
+
+  console.log('[VoiceDL] Fetch interceptor installed — listening for /backend-api/synthesize');
 })();

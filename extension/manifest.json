@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT Voice Downloader",
-  "description": "Download ChatGPT's Read Aloud audio as MP3 files with one click.",
+  "description": "Download ChatGPT's Read Aloud audio with one click. Captures TTS audio as AAC/MP3 files.",
   "version": "1.0.0",
   "permissions": [
     "downloads"
