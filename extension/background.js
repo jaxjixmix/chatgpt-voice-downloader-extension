@@ -11,6 +11,11 @@
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'download') {
+    // Validate sender is from a chatgpt.com tab
+    if (!sender.tab || !sender.url || !sender.url.includes('chatgpt.com')) {
+      sendResponse({ success: false, error: 'Unauthorized sender' });
+      return true;
+    }
     handleDownload(message, sender, sendResponse);
     return true; // Keep the message channel open for async response
   }

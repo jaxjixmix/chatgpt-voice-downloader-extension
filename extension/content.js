@@ -139,7 +139,10 @@
     document.querySelectorAll('.voice-dl-toast').forEach((t) => t.remove());
     const toast = document.createElement('div');
     toast.className = 'voice-dl-toast' + (isError ? ' error' : '');
-    toast.innerHTML = `<span class="dot"></span>${message}`;
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    toast.appendChild(dot);
+    toast.appendChild(document.createTextNode(message));
     document.body.appendChild(toast);
     setTimeout(() => { if (toast.parentNode) toast.remove(); }, 3500);
   }

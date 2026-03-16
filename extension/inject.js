@@ -39,7 +39,7 @@
     window.postMessage({
       type: 'CHATGPT_VOICE_DL_TTS_START',
       payload: { url, messageId, timestamp: Date.now() },
-    }, '*');
+    }, location.origin);
 
     const response = await ORIGINAL_FETCH.apply(this, args);
     const clone = response.clone();
@@ -63,6 +63,8 @@
       let totalSize = 0;
       let base64 = '';
 
+      const MAX_SIZE = 50 * 1024 * 1024; // 50MB safety limit
+
       if (response.body && typeof response.body.getReader === 'function') {
         const reader = response.body.getReader();
         const chunks = [];
@@ -72,6 +74,12 @@
           if (done) break;
           chunks.push(value);
           totalSize += value.byteLength;
+
+          if (totalSize > MAX_SIZE) {
+            console.warn('[VoiceDL] Audio exceeds 50MB limit, aborting capture');
+            reader.cancel();
+            return;
+          }
         }
 
         if (totalSize < 100) {
@@ -107,14 +115,14 @@
           messageId,
           timestamp: Date.now(),
         },
-      }, '*');
+      }, location.origin);
 
     } catch (err) {
       console.error('[VoiceDL] Error collecting audio:', err);
       window.postMessage({
         type: 'CHATGPT_VOICE_DL_ERROR',
         payload: { error: err.message, url },
-      }, '*');
+      }, location.origin);
     }
   }
 
