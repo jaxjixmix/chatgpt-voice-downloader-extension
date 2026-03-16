@@ -12,18 +12,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build extension zip
+      - name: Build extension zips
         run: bash build.sh
 
       - name: Verify build output
         run: |
           test -f dist/chatgpt-voice-downloader.zip
-          test -f dist/index.html
+          test -f dist/chatgpt-voice-downloader-cws.zip
           echo "Build artifacts:"
           ls -lh dist/
 
-      - name: Upload artifact
+      - name: Upload extension zip
         uses: actions/upload-artifact@v4
         with:
           name: chatgpt-voice-downloader
           path: dist/chatgpt-voice-downloader.zip
+
+      - name: Upload Chrome Web Store zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: chatgpt-voice-downloader-cws
+          path: dist/chatgpt-voice-downloader-cws.zip

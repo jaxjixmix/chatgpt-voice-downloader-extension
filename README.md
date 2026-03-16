@@ -2,7 +2,7 @@
 
 A Chrome extension that automatically downloads ChatGPT's **Read Aloud** audio. Click Read Aloud like you normally would — the audio file appears in your downloads folder. No extra buttons, no UI changes, no configuration.
 
-**[Download the extension](https://chatgpt-voice-downloader-extension.vercel.app/chatgpt-voice-downloader.zip)** · **[Landing page](https://chatgpt-voice-downloader-extension.vercel.app)**
+**[Download the extension](https://github.com/jaxjixmix/chatgpt-voice-downloader-extension/releases/latest/download/chatgpt-voice-downloader.zip)** · **[Releases](https://github.com/jaxjixmix/chatgpt-voice-downloader-extension/releases)**
 
 ---
 
@@ -16,10 +16,11 @@ That's it. No popup, no extra buttons injected into ChatGPT, no sign-up.
 
 ## Install the extension
 
-### From the website
+### From the latest release
 
-1. Download the zip from [the landing page](https://chatgpt-voice-downloader-extension.vercel.app)
-2. Unzip it
+1. Go to [Releases](https://github.com/jaxjixmix/chatgpt-voice-downloader-extension/releases/latest)
+2. Download `chatgpt-voice-downloader.zip`
+3. Unzip it
 3. Open `chrome://extensions` in Chrome
 4. Enable **Developer mode** (top right)
 5. Click **Load unpacked** and select the unzipped folder
@@ -54,31 +55,23 @@ open index.html
 
 Then visit `http://localhost:8000`.
 
-The download link on the landing page points to `/chatgpt-voice-downloader.zip`, which only exists in the `dist/` output. To test the full build locally:
-
-```bash
-bash build.sh
-npx serve dist
-```
-
-## Build for deployment
+## Build
 
 ```bash
 bash build.sh
 ```
 
 This creates a `dist/` folder containing:
-- `index.html` — the landing page
-- `chatgpt-voice-downloader.zip` — the packaged extension
+- `chatgpt-voice-downloader.zip` — for users to load unpacked in Chrome
+- `chatgpt-voice-downloader-cws.zip` — for Chrome Web Store upload
 
-The project deploys to Vercel. `vercel.json` runs `build.sh` and serves `dist/`.
+GitHub Actions runs `build.sh` on every push to `main`. On version tags (`v*`), the release workflow attaches both zips to a GitHub release.
 
 ## Architecture
 
 ```
-├── index.html           # Marketing landing page
-├── build.sh             # Zips extension/ + copies index.html into dist/
-├── vercel.json          # Vercel deployment config
+├── index.html           # Marketing landing page (download links point to GitHub release)
+├── build.sh             # Zips extension/ into dist/ (user zip + CWS zip)
 └── extension/
     ├── manifest.json    # Manifest V3 — scoped to chatgpt.com, downloads permission
     ├── inject.js        # Runs in PAGE context — intercepts fetch(/backend-api/synthesize)

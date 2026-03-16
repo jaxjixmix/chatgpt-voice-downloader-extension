@@ -13,11 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build extension zip
+      - name: Build extension zips
         run: bash build.sh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/chatgpt-voice-downloader.zip
+          files: |
+            dist/chatgpt-voice-downloader.zip
+            dist/chatgpt-voice-downloader-cws.zip
           generate_release_notes: true
