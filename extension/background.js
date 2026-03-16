@@ -3,6 +3,10 @@
  *
  * Handles download requests from the content script using the
  * chrome.downloads API for a clean download experience.
+ *
+ * Receives base64-encoded audio data (not blob URLs) from the content script,
+ * since blob URLs created in content scripts aren't accessible from the
+ * service worker in Manifest V3.
  */
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -13,12 +17,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function handleDownload(message, sender, sendResponse) {
-  const { url, filename } = message;
+  const { base64, contentType, filename } = message;
+
+  if (!base64) {
+    sendResponse({ success: false, error: 'No audio data provided' });
+    return;
+  }
 
   try {
+    // Convert base64 to a data URL for chrome.downloads
+    const dataUrl = `data:${contentType || 'audio/aac'};base64,${base64}`;
+
     const downloadId = await chrome.downloads.download({
-      url,
-      filename: filename || 'chatgpt-voice.mp3',
+      url: dataUrl,
+      filename: filename || 'chatgpt-voice.aac',
       saveAs: false,
     });
 
