@@ -7,8 +7,45 @@ on:
     branches: [main]
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate manifest.json
+        run: |
+          echo "Checking manifest.json is valid JSON..."
+          python3 -c "
+          import json, sys
+
+          with open('extension/manifest.json') as f:
+              m = json.load(f)
+
+          required = ['manifest_version', 'name', 'version', 'permissions', 'content_scripts', 'background']
+          missing = [k for k in required if k not in m]
+          if missing:
+              print(f'FAIL: missing required fields: {missing}')
+              sys.exit(1)
+
+          if m['manifest_version'] != 3:
+              print(f'FAIL: expected manifest_version 3, got {m[\"manifest_version\"]}')
+              sys.exit(1)
+
+          print(f'OK: {m[\"name\"]} v{m[\"version\"]} (Manifest V{m[\"manifest_version\"]})')
+          print(f'  Permissions: {m[\"permissions\"]}')
+          print(f'  Content scripts: {len(m[\"content_scripts\"])} entry')
+          "
+
+      - name: Lint JavaScript (syntax check)
+        run: |
+          echo "Checking JS files for syntax errors..."
+          for f in extension/*.js; do
+            node --check "$f" && echo "  OK: $f" || exit 1
+          done
+
   build:
     runs-on: ubuntu-latest
+    needs: validate
     steps:
       - uses: actions/checkout@v4
 
