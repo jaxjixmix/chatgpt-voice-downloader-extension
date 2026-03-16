@@ -3,37 +3,1073 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>chatgpt-voice-downloader-extension</title>
+  <title>ChatGPT Voice Downloader — Save Read Aloud Audio Instantly</title>
+  <meta name="description" content="A Chrome extension that lets you download ChatGPT's Read Aloud audio as MP3 files. One click. Zero friction." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet" />
   <style>
+    /* ── Reset & Variables ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050505;
+      --bg-elevated: #0c0c0c;
+      --bg-card: #111111;
+      --border: #1a1a1a;
+      --border-hover: #2a2a2a;
+      --text: #e8e8e8;
+      --text-muted: #737373;
+      --text-dim: #525252;
+      --accent: #39ff14;
+      --accent-dim: rgba(57, 255, 20, 0.15);
+      --accent-glow: rgba(57, 255, 20, 0.3);
+      --font-display: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: var(--font-display);
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── Animated Waveform Background ── */
+    .waveform-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .waveform-bg svg {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 200%;
+      height: 40%;
+      opacity: 0.04;
+    }
+
+    .wave-path {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 1.5;
+    }
+
+    .wave-1 { animation: waveShift 8s ease-in-out infinite; }
+    .wave-2 { animation: waveShift 12s ease-in-out infinite reverse; opacity: 0.6; }
+    .wave-3 { animation: waveShift 6s ease-in-out infinite; opacity: 0.3; }
+
+    @keyframes waveShift {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(-25%); }
+    }
+
+    /* ── Grid Overlay ── */
+    .grid-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(57, 255, 20, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(57, 255, 20, 0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+
+    /* ── Noise Texture ── */
+    .noise {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      opacity: 0.035;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 256px 256px;
+    }
+
+    /* ── Layout ── */
+    .content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    section {
+      padding: 6rem 0;
+    }
+
+    /* ── Navigation ── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 1rem 0;
+      background: rgba(5, 5, 5, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .nav-logo-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--accent);
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0a0a0a;
-      color: #fafafa;
     }
-    .container { text-align: center; padding: 2rem; }
-    h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.025em; }
-    p { margin-top: 0.75rem; color: #a1a1aa; font-size: 0.95rem; }
-    .badge {
-      display: inline-block;
-      margin-top: 1.5rem;
-      padding: 0.25rem 0.75rem;
-      border: 1px solid #27272a;
+
+    .nav-logo-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .nav-logo span {
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1.1rem;
+      background: var(--accent);
+      color: #000;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      transition: box-shadow 0.3s, transform 0.2s;
+    }
+
+    .nav-cta:hover {
+      box-shadow: 0 0 24px var(--accent-glow);
+      transform: translateY(-1px);
+    }
+
+    .nav-cta svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding-top: 10rem;
+      padding-bottom: 6rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1rem;
+      border: 1px solid var(--border);
       border-radius: 9999px;
       font-size: 0.75rem;
-      color: #71717a;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      margin-bottom: 2rem;
+      animation: fadeInUp 0.6s ease-out both;
+    }
+
+    .hero-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .hero h1 {
+      font-size: clamp(2.8rem, 7vw, 5.5rem);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      max-width: 800px;
+      margin: 0 auto 1.5rem;
+      animation: fadeInUp 0.6s ease-out 0.1s both;
+    }
+
+    .hero h1 .accent {
+      background: linear-gradient(135deg, var(--accent), #00ff88);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--text-muted);
+      font-weight: 300;
+      max-width: 520px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.6;
+      animation: fadeInUp 0.6s ease-out 0.2s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.6s ease-out 0.3s both;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 2rem;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: box-shadow 0.3s, transform 0.2s;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 40px var(--accent-glow), 0 4px 20px rgba(0,0,0,0.5);
+      transform: translateY(-2px);
+    }
+
+    .btn-primary svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 2rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      font-family: var(--font-display);
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.3s, color 0.3s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    /* ── Hero Visual: Waveform Bar ── */
+    .hero-visual {
+      margin-top: 4rem;
+      animation: fadeInUp 0.8s ease-out 0.5s both;
+    }
+
+    .waveform-demo {
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      gap: 3px;
+      height: 80px;
+      padding: 2rem;
+    }
+
+    .waveform-demo .bar {
+      width: 4px;
+      border-radius: 4px;
+      background: var(--accent);
+      opacity: 0.6;
+      animation: waveBar 1.2s ease-in-out infinite;
+    }
+
+    @keyframes waveBar {
+      0%, 100% { transform: scaleY(0.3); opacity: 0.3; }
+      50% { transform: scaleY(1); opacity: 0.8; }
+    }
+
+    /* ── How It Works ── */
+    #how-it-works { border-top: 1px solid var(--border); }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+    }
+
+    .section-desc {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      font-weight: 300;
+      max-width: 500px;
+      line-height: 1.6;
+      margin-bottom: 3.5rem;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .step {
+      position: relative;
+      padding: 2rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .step:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 30px var(--accent-dim);
+    }
+
+    .step-number {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      margin-bottom: 1.2rem;
+      letter-spacing: 0.1em;
+    }
+
+    .step-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--accent-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.2rem;
+    }
+
+    .step-icon svg {
+      width: 22px;
+      height: 22px;
+      color: var(--accent);
+    }
+
+    .step h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.6rem;
+    }
+
+    .step p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      font-weight: 300;
+    }
+
+    /* ── Features ── */
+    #features { border-top: 1px solid var(--border); }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      padding: 2rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      transition: border-color 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .feature-card .feature-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--accent-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .feature-icon svg {
+      width: 18px;
+      height: 18px;
+      color: var(--accent);
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .feature-card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      font-weight: 300;
+    }
+
+    /* ── Inline Preview Section ── */
+    #preview { border-top: 1px solid var(--border); }
+
+    .preview-container {
+      display: flex;
+      align-items: center;
+      gap: 4rem;
+    }
+
+    .preview-text {
+      flex: 1;
+    }
+
+    .preview-mockup {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+    }
+
+    .chat-bubble {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .chat-bubble-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .chat-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10a37f, #1a7f5a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chat-avatar svg {
+      width: 16px;
+      height: 16px;
+      color: white;
+    }
+
+    .chat-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .chat-body {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 1.2rem;
+    }
+
+    .chat-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-top: 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .chat-action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chat-action-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-muted);
+    }
+
+    .chat-action-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .chat-action-btn.download-btn {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+      animation: subtlePulse 3s ease-in-out infinite;
+    }
+
+    .chat-action-btn.download-btn:hover {
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    @keyframes subtlePulse {
+      0%, 100% { box-shadow: 0 0 0px transparent; }
+      50% { box-shadow: 0 0 12px var(--accent-dim); }
+    }
+
+    .download-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--accent);
+      margin-left: 0.4rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── CTA Section ── */
+    .cta-section {
+      text-align: center;
+      padding: 8rem 0;
+      border-top: 1px solid var(--border);
+      position: relative;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(ellipse, var(--accent-dim), transparent 70%);
+      pointer-events: none;
+      opacity: 0.4;
+    }
+
+    .cta-section .section-title {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+
+    .cta-section .section-desc {
+      margin: 0 auto 2.5rem;
+      text-align: center;
+    }
+
+    .cta-section .btn-primary {
+      position: relative;
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 2rem 0;
+      border-top: 1px solid var(--border);
+    }
+
+    footer .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-left {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--text-muted); }
+
+    /* ── Animations ── */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      section { padding: 4rem 0; }
+
+      .hero { padding-top: 7rem; padding-bottom: 4rem; }
+
+      .steps {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .preview-container {
+        flex-direction: column;
+        gap: 2.5rem;
+      }
+
+      .preview-text { text-align: center; }
+
+      .preview-mockup { width: 100%; }
+
+      .chat-bubble { max-width: 100%; }
+
+      .nav-links { display: none; }
+
+      .cta-section { padding: 5rem 0; }
+
+      footer .container {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 2.2rem; }
+      .hero-actions { flex-direction: column; }
+      .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>chatgpt-voice-downloader-extension</h1>
-    <p>Downloader for chatgpt output</p>
-    <span class="badge">Coming soon</span>
+
+  <!-- Background layers -->
+  <div class="waveform-bg">
+    <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <path class="wave-path wave-1" d="M0,160 C120,100 240,200 360,160 C480,120 600,200 720,160 C840,120 960,200 1080,160 C1200,120 1320,200 1440,160" />
+      <path class="wave-path wave-2" d="M0,200 C120,150 240,250 360,200 C480,150 600,250 720,200 C840,150 960,250 1080,200 C1200,150 1320,250 1440,200" />
+      <path class="wave-path wave-3" d="M0,240 C120,190 240,280 360,240 C480,190 600,280 720,240 C840,190 960,280 1080,240 C1200,190 1320,280 1440,240" />
+    </svg>
   </div>
+  <div class="grid-overlay"></div>
+  <div class="noise"></div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- Nav -->
+    <nav>
+      <div class="container">
+        <a href="#" class="nav-logo">
+          <div class="nav-logo-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+            </svg>
+          </div>
+          <span>Voice Downloader</span>
+        </a>
+        <ul class="nav-links">
+          <li><a href="#how-it-works">How It Works</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#preview">Preview</a></li>
+        </ul>
+        <a href="#install" class="nav-cta">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="8 12 12 16 16 12"/>
+            <line x1="12" y1="8" x2="12" y2="16"/>
+          </svg>
+          Install Free
+        </a>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-badge">
+          <span class="dot"></span>
+          Chrome Extension &middot; Free &amp; Open Source
+        </div>
+        <h1>
+          Save ChatGPT's<br /><span class="accent">Voice</span> as Audio
+        </h1>
+        <p class="hero-sub">
+          One-click download when ChatGPT reads aloud. Capture any response as an MP3 file &mdash; instantly, privately, no account required.
+        </p>
+        <div class="hero-actions">
+          <a href="#install" class="btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Add to Chrome
+          </a>
+          <a href="#how-it-works" class="btn-secondary">See how it works</a>
+        </div>
+
+        <!-- Waveform animation -->
+        <div class="hero-visual">
+          <div class="waveform-demo" id="waveform"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works">
+      <div class="container">
+        <div class="section-label">How It Works</div>
+        <h2 class="section-title">Three steps. That's it.</h2>
+        <p class="section-desc">
+          No configuration, no setup, no sign-up. Install and start downloading.
+        </p>
+
+        <div class="steps">
+          <div class="step fade-in">
+            <div class="step-number">01</div>
+            <div class="step-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </div>
+            <h3>Install the extension</h3>
+            <p>Add it from the Chrome Web Store in one click. No permissions abuse &mdash; it only runs on chatgpt.com.</p>
+          </div>
+
+          <div class="step fade-in">
+            <div class="step-number">02</div>
+            <div class="step-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              </svg>
+            </div>
+            <h3>Hit "Read Aloud"</h3>
+            <p>Use ChatGPT's built-in Read Aloud on any response. The extension detects it automatically.</p>
+          </div>
+
+          <div class="step fade-in">
+            <div class="step-number">03</div>
+            <div class="step-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+            </div>
+            <h3>Download the audio</h3>
+            <p>A download button appears inline. Click it to save the audio as an MP3 file to your computer.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features">
+      <div class="container">
+        <div class="section-label">Features</div>
+        <h2 class="section-title">Built for simplicity</h2>
+        <p class="section-desc">
+          No bloat. No tracking. Just the feature you need.
+        </p>
+
+        <div class="features-grid">
+          <div class="feature-card fade-in">
+            <div class="feature-header">
+              <div class="feature-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+              <h3>One-click download</h3>
+            </div>
+            <p>An inline button appears right next to ChatGPT's Read Aloud controls. No popups, no menus, no friction.</p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-header">
+              <div class="feature-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </div>
+              <h3>Privacy first</h3>
+            </div>
+            <p>Everything happens locally in your browser. No data leaves your machine. No analytics, no telemetry, no servers.</p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-header">
+              <div class="feature-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <h3>MP3 format</h3>
+            </div>
+            <p>Audio is saved as high-quality MP3 files that work everywhere &mdash; share, archive, or use in your own projects.</p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-header">
+              <div class="feature-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 18 22 12 16 6"/>
+                  <polyline points="8 6 2 12 8 18"/>
+                </svg>
+              </div>
+              <h3>Open source</h3>
+            </div>
+            <p>Fully open source on GitHub. Inspect the code, contribute, or fork it. Transparency by default.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Preview -->
+    <section id="preview">
+      <div class="container">
+        <div class="preview-container">
+          <div class="preview-text">
+            <div class="section-label">Preview</div>
+            <h2 class="section-title">Seamlessly<br />integrated</h2>
+            <p class="section-desc">
+              The download button blends right into ChatGPT's interface. It's there when you need it, invisible when you don't.
+            </p>
+          </div>
+          <div class="preview-mockup fade-in">
+            <div class="chat-bubble">
+              <div class="chat-bubble-header">
+                <div class="chat-avatar">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                  </svg>
+                </div>
+                <span class="chat-name">ChatGPT</span>
+              </div>
+              <div class="chat-body">
+                Here's a brief summary of quantum computing: it leverages quantum bits (qubits) that can exist in superposition&hellip;
+              </div>
+              <div class="chat-actions">
+                <!-- Typical ChatGPT action buttons -->
+                <button class="chat-action-btn" title="Copy">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+                <button class="chat-action-btn" title="Read Aloud">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                  </svg>
+                </button>
+                <button class="chat-action-btn" title="Thumbs up">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                  </svg>
+                </button>
+                <!-- THE EXTENSION'S DOWNLOAD BUTTON -->
+                <button class="chat-action-btn download-btn" title="Download Audio">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                </button>
+                <span class="download-label">NEW</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section" id="install">
+      <div class="container">
+        <div class="section-label">Get Started</div>
+        <h2 class="section-title">Ready to save some audio?</h2>
+        <p class="section-desc">
+          Free, open source, and takes five seconds to install.
+        </p>
+        <a href="#" class="btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Add to Chrome &mdash; It's Free
+        </a>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <div class="footer-left">&copy; 2026 ChatGPT Voice Downloader</div>
+        <ul class="footer-links">
+          <li><a href="https://github.com" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Support</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // Generate waveform bars
+    (function () {
+      const container = document.getElementById('waveform');
+      const count = 60;
+      for (let i = 0; i < count; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        const h = 20 + Math.random() * 50;
+        bar.style.height = h + 'px';
+        bar.style.animationDelay = (i * 0.06) + 's';
+        container.appendChild(bar);
+      }
+    })();
+
+    // Intersection Observer for fade-in
+    (function () {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.15 }
+      );
+
+      document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el));
+    })();
+  </script>
 </body>
 </html>
